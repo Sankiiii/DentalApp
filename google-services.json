@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "326521123200",
+    "project_id": "dental-proj-737fb",
+    "storage_bucket": "dental-proj-737fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:326521123200:android:435e73edea140c14eb5165",
+        "android_client_info": {
+          "package_name": "com.codegenco.dental"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClExw50IqJNNXe5Wo8NwAXRQ0AGKz8BTA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
