@@ -1,8 +1,10 @@
+
 import 'package:dental_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:dental_app/screens/signup_screen.dart';
 import 'package:dental_app/screens/home_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,8 +31,10 @@ class MyApp extends StatelessWidget {
       home: const LoginScreen(),
       routes: {
         '/signup': (context) => const SignupScreen(),
-        '/home' :(context) => const HomeScreen(),
+        '/home' :(context) => const ProfileScreen(),
       },
     );
   }
 }
+
+
