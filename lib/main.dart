@@ -1,5 +1,6 @@
 
 import 'package:dental_app/screens/login_screen.dart';
+import 'package:dental_app/screens/view_patient_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:dental_app/screens/signup_screen.dart';
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const LoginScreen(),
+      home:  LoginScreen(),
       routes: {
         '/signup': (context) => const SignupScreen(),
         '/profile' :(context) => const ProfileScreen(),
