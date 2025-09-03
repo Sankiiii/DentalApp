@@ -14,59 +14,58 @@ class CustomDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-      right: isDrawerOpen ? 0 : -260,
-      top: 80,
-      bottom: 20,
-      child: Container(
-        width: 250,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(25),
-            bottomLeft: Radius.circular(25),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10,
-              offset: const Offset(-5, 5),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 5, bottom: 20),
-                child: Text(
-                  "Dashboard",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              _buildDrawerItem(Icons.notifications, "Notifications", badge: "3"),
-              _buildDrawerItem(Icons.history, "Client History"),
-              _buildDrawerItem(Icons.calendar_today, "Schedule"),
-              _buildDrawerItem(Icons.photo, "Photos"),
-              _buildDrawerItem(Icons.receipt_long, "Billing Details"),
-              _buildDrawerItem(Icons.settings, "Settings"),
-              const Spacer(),
-              _buildDrawerItem(
-                Icons.logout,
-                "Log Out",
-                color: Colors.red.shade600,
-                isLogout: true,
-                context: context,
-              ),
-            ],
-          ),
-        ),
+   return AnimatedPositioned(
+  duration: const Duration(milliseconds: 400),
+  curve: Curves.easeInOut,
+  right: isDrawerOpen ? 0 : -260,
+  top: 120, // distance from top
+  child: Container(
+    width: 250,
+    height: 800, // 👈 fixed height
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(25),
+        bottomLeft: Radius.circular(25),
       ),
-    );
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black26,
+          blurRadius: 10,
+          offset: const Offset(-5, 5),
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+      child: Column(
+  mainAxisAlignment: MainAxisAlignment.spaceEvenly, // 👈 space evenly
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    const Text(
+      "Dashboard",
+      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    ),
+    _buildDrawerItem(Icons.notifications, "Notifications", badge: "3"),
+    _buildDrawerItem(Icons.history, "Client History"),
+    _buildDrawerItem(Icons.calendar_today, "Schedule"),
+    _buildDrawerItem(Icons.photo, "Photos"),
+    _buildDrawerItem(Icons.receipt_long, "Billing Details"),
+    _buildDrawerItem(Icons.settings, "Settings"),
+    _buildDrawerItem(
+      Icons.logout,
+      "Log Out",
+      color: Colors.red.shade600,
+      isLogout: true,
+      context: context,
+    ),
+  ],
+)
+
+    ),
+  ),
+);
+
   }
 
   Widget _buildDrawerItem(IconData icon, String title,

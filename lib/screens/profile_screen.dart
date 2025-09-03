@@ -106,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     "Just like fingerprints, toothprints are unique to each individual.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 20,
                       color: Colors.black54,
                       height: 1.5,
                     ),
@@ -119,7 +119,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ),
-
           // Custom Drawer (Reusable)
           CustomDrawer(
             isDrawerOpen: _isDrawerOpen,
@@ -135,7 +134,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: () {
+          
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue.shade700,
           shape: RoundedRectangleBorder(
