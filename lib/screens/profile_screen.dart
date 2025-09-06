@@ -199,7 +199,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 
 /// Treatment model for history entries
-/// Treatment model for history entries
 class Treatment {
   final DateTime date;
   final String type;
@@ -307,105 +306,7 @@ class PatientListScreen extends StatefulWidget {
 }
 
 class _PatientListScreenState extends State<PatientListScreen> {
-  /// In-memory list. Replace with DB/API later as needed.
-  final List<Patient> _patients = [
-  Patient(
-    id: 'P001',
-    name: 'Sanket Angane',
-    age: 20,
-    phone: '932186XXXX',
-    dob: '01/07/2005',
-    address: 'Tambe Nagar, Mulund.',
-    status: 'Active',
-    lastVisit: DateTime.now().subtract(const Duration(days: 10)),
-    allergies: 'Penicillin',
-    ongoing: 'Diabetes',
-    treatments: [
-      Treatment(
-        date: DateTime(2025, 7, 1),
-        type: 'Root Canal',
-        cost: 500,
-        estimatedSessions: 3,
-        remainingSessions: 2,
-      ),
-      Treatment(
-        date: DateTime(2025, 9, 11),
-        type: 'Filling',
-        cost: 700,
-        estimatedSessions: 1,
-        remainingSessions: 1,
-      ),
-    ],
-    notes: 'Patient reports pain in the lower right tooth',
-    reportFiles: ['assets/images/xray.jpg', 'assets/images/xray.jpg'],
-  ),
-  Patient(
-    id: 'P002',
-    name: 'Rohan Patil',
-    age: 34,
-    phone: '9988776655',
-    dob: '12/02/1991',
-    address: 'Dadar East, Mumbai.',
-    status: 'Follow-up',
-    lastVisit: DateTime.now().subtract(const Duration(days: 30)),
-    allergies: 'None',
-    ongoing: 'Hypertension',
-    treatments: [
-      Treatment(
-        date: DateTime(2025, 8, 10),
-        type: 'Cavity Filling',
-        cost: 400,
-        estimatedSessions: 2,
-        remainingSessions: 1,
-      ),
-    ],
-    notes: 'Review scheduled after 1 month.',
-    reportFiles: ['assets/images/xray.jpg'],
-  ),
-];
-
-  Future<void> _openDetails(Patient p, int index) async {
-    final result = await Navigator.push<Patient?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ViewPatientScreen(patient: p),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        _patients[index] = result;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient updated successfully')),
-      );
-    }
-  }
-
-  Future<void> _addPatient() async {
-    final newPatient = await Navigator.push<Patient?>(
-      context,
-      MaterialPageRoute(builder: (_) => const AddPatientScreen()),
-    );
-
-    if (newPatient != null) {
-      final updatedPatient = await Navigator.push<Patient?>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => TreatmentTrackingScreen(patient: newPatient),
-        ),
-      );
-
-      if (updatedPatient != null) {
-        setState(() {
-          _patients.add(updatedPatient);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Patient added successfully')),
-        );
-      }
-    }
-  }
+  final user = FirebaseAuth.instance.currentUser;
 
   String _formatDate(DateTime d) {
     const months = [
@@ -415,35 +316,135 @@ class _PatientListScreenState extends State<PatientListScreen> {
     return '${d.day.toString().padLeft(2, '0')} ${months[d.month - 1]} ${d.year}';
   }
 
+  Future<void> _addPatient() async {
+    final newPatient = await Navigator.push<Patient?>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddPatientScreen()),
+    );
+
+    if (newPatient != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TreatmentTrackingScreen(patient: newPatient),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text("⚠️ Please login to view patients")),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Patients'),
+        backgroundColor: Colors.blue,
+        elevation: 2,
       ),
-      body: _patients.isEmpty
-          ? const Center(
-              child: Text('No patients yet. Tap + to add.'),
-            )
-          : ListView.separated(
-              itemCount: _patients.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final p = _patients[index];
-                return ListTile(
-                  title: Text(p.name),
-                  subtitle: Text(
-                    'Last visit: ${_formatDate(p.lastVisit)} • ${p.status}',
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection("users")
+            .doc(user!.uid)
+            .collection("patients")
+            .orderBy("updatedAt", descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(child: Text("❌ Error loading patients"));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text("No patients yet. Tap + to add."),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+
+              final p = Patient(
+                id: data['id'],
+                name: data['name'],
+                age: data['age'],
+                phone: data['phone'],
+                dob: data['dob'],
+                address: data['address'],
+                status: data['status'] ?? 'Active',
+                lastVisit: (data['lastVisit'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                allergies: data['allergies'] ?? '',
+                ongoing: data['ongoing'] ?? '',
+                treatments: const [], // could be loaded separately if needed
+                notes: data['notes'] ?? '',
+                reportFiles: List<String>.from(data['reportFiles'] ?? []),
+              );
+
+              return Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.blue.shade100,
+                    child: Text(
+                      p.name.isNotEmpty ? p.name[0] : "?",
+                      style: const TextStyle(
+                        fontSize: 20, 
+                        fontWeight: FontWeight.bold, 
+                        color: Colors.blue,
+                      ),
+                    ),
                   ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openDetails(p, index),
-                );
-              },
-            ),
+                  title: Text(
+                    p.name,
+                    style: const TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Last visit: ${_formatDate(p.lastVisit)}\nStatus: ${p.status}',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.blue),
+                  onTap: () async {
+                    final updatedPatient = await Navigator.push<Patient?>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ViewPatientScreen(patient: p),
+                      ),
+                    );
+                    if (updatedPatient != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Patient updated")),
+                      );
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addPatient,
         icon: const Icon(Icons.person_add),
-        label: const Text('Add Patient'),
+        label: const Text("Add Patient"),
+        backgroundColor: Colors.blue,
       ),
     );
   }

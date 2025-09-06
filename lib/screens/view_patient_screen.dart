@@ -24,7 +24,7 @@ class ViewPatientScreen extends StatelessWidget {
     );
 
     if (updated != null && context.mounted) {
-      Navigator.pop(context, updated); // send updated back to list
+      Navigator.pop(context, updated);
     }
   }
 
@@ -91,8 +91,7 @@ class ViewPatientScreen extends StatelessWidget {
                         leading: const Icon(Icons.healing, color: Colors.blue),
                         title: Text(
                           t.type,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,6 +127,7 @@ class ViewPatientScreen extends StatelessWidget {
             ],
           ),
 
+          // Reports & Files (always try to show image from IPFS or full URL)
           _sectionCard(
             context,
             title: "Reports & Files",
@@ -136,12 +136,27 @@ class ViewPatientScreen extends StatelessWidget {
               if (p.reportFiles.isEmpty)
                 const Text("No reports uploaded.")
               else
-                Column(
-                  children: p.reportFiles.map((f) {
-                    return ListTile(
-                      leading: const Icon(Icons.insert_drive_file,
-                          color: Colors.red),
-                      title: Text(f),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: p.reportFiles.map((fileRef) {
+                    final url = _buildUrl(fileRef);
+
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        url,
+                        height: 120,
+                        width: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 120,
+                          width: 120,
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.grey),
+                        ),
+                      ),
                     );
                   }).toList(),
                 ),
@@ -163,6 +178,14 @@ class ViewPatientScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Build proper URL (handles both CIDs and full URLs)
+  String _buildUrl(String ref) {
+    if (ref.startsWith("http")) {
+      return ref; // already a full URL
+    }
+    return "https://gateway.pinata.cloud/ipfs/$ref";
   }
 
   Widget _row(String label, String value) {
@@ -197,11 +220,11 @@ class ViewPatientScreen extends StatelessWidget {
       required IconData icon,
       required List<Widget> children}) {
     return Card(
-      elevation: 3,
+      elevation: 4,
       margin: const EdgeInsets.only(bottom: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -218,7 +241,7 @@ class ViewPatientScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const Divider(height: 20),
             ...children,
           ],
         ),

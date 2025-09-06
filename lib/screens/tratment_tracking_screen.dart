@@ -1,5 +1,8 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dental_app/screens/profile_screen.dart';
+import 'package:dental_app/services/pinata_image_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -37,32 +40,60 @@ class _TreatmentTrackingScreenState extends State<TreatmentTrackingScreen> {
     }
   }
 
-  void _saveTreatment() {
-    if (_formKey.currentState!.validate()) {
-      final estSessions = int.tryParse(_estimatedSessionsController.text) ?? 1;
-      final remSessions =
-          int.tryParse(_remainingSessionsController.text) ?? estSessions;
 
-      final newTreatment = Treatment(
-        date: DateTime.tryParse(_dateController.text) ?? DateTime.now(),
-        type: _procedureController.text.trim(),
-        cost: double.tryParse(_costController.text) ?? 0,
-        estimatedSessions: estSessions,
-        remainingSessions: remSessions,
-      );
 
-      final updated = widget.patient.copyWith(
-        treatments: [...widget.patient.treatments, newTreatment],
-        reportFiles: [
-          ...widget.patient.reportFiles,
-          ..._attachments.map((f) => f.path)
-        ],
-      );
+void _saveTreatment() async {
+  if (_formKey.currentState!.validate()) {
+    final estSessions = int.tryParse(_estimatedSessionsController.text) ?? 1;
+    final remSessions =
+        int.tryParse(_remainingSessionsController.text) ?? estSessions;
 
-      // ✅ return updated patient to PatientListScreen
-      Navigator.pop(context, updated);
+    final newTreatment = {
+  "date": _dateController.text,
+  "procedure": _procedureController.text.trim(),
+  "cost": double.tryParse(_costController.text) ?? 0,
+  "estimatedSessions": estSessions,
+  "remainingSessions": remSessions,
+  "createdAt": Timestamp.now(), // ✅ use client-side timestamp
+};
+
+
+    // ✅ Upload files to Pinata
+    List<String> uploadedUrls = [];
+    for (File f in _attachments) {
+      final url = await PinataService().uploadFile(f);
+      if (url != null) uploadedUrls.add(url);
     }
+
+    // ✅ Get logged-in user UID
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print("⚠️ User not logged in");
+      return;
+    }
+
+    // ✅ Save patient data in Firestore under the logged-in user
+    await FirebaseFirestore.instance
+        .collection("users")
+        .doc(user.uid)
+        .collection("patients")
+        .doc(widget.patient.id) // unique patient doc
+        .set({
+      "id": widget.patient.id,
+      "name": widget.patient.name,
+      "age": widget.patient.age,
+      "phone": widget.patient.phone,
+      "dob": widget.patient.dob,
+      "address": widget.patient.address,
+      "treatments": FieldValue.arrayUnion([newTreatment]),
+      "reportFiles": FieldValue.arrayUnion(uploadedUrls),
+      "updatedAt": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    Navigator.pop(context);
   }
+}
+
 
   InputDecoration _fieldDecoration(String label) {
     return InputDecoration(
