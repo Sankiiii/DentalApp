@@ -31,8 +31,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home:  PatientListScreen(),
+      // home:  PatientListScreen(),
             // home:  AddPatientScreen(),
+            home: LoginScreen(),
 
 
       routes: {
