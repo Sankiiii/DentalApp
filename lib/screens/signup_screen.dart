@@ -1,5 +1,4 @@
 import 'package:dental_app/services/user_authintication.dart';
-import 'package:dental_app/constant/constants.dart';
 import 'package:flutter/material.dart';
 
 class SignupScreen extends StatefulWidget {

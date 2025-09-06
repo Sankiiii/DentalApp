@@ -1,12 +1,9 @@
 
-import 'package:dental_app/screens/add_patient.dart';
 import 'package:dental_app/screens/login_screen.dart';
-import 'package:dental_app/screens/patient_screen.dart';
-import 'package:dental_app/screens/view_patient_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:dental_app/screens/signup_screen.dart';
-import 'package:dental_app/screens/profile_screen.dart';
 
 
 void main() async {
