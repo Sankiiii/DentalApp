@@ -1,195 +1,162 @@
 import 'package:flutter/material.dart';
+import 'package:dental_app/screens/profile_screen.dart'; // contains Patient model
 
-class AddEditPatientScreen extends StatefulWidget {
-  final Map<String, dynamic>? patient; // null = add, not null = edit
-
-  const AddEditPatientScreen({super.key, this.patient});
+class AddPatientScreen extends StatefulWidget {
+  const AddPatientScreen({super.key});
 
   @override
-  State<AddEditPatientScreen> createState() => _AddEditPatientScreenState();
+  State<AddPatientScreen> createState() => _AddPatientScreenState();
 }
 
-class _AddEditPatientScreenState extends State<AddEditPatientScreen> {
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
-  final TextEditingController dobController = TextEditingController();
-  final TextEditingController contactController = TextEditingController();
-  final TextEditingController addressController = TextEditingController();
+class _AddPatientScreenState extends State<AddPatientScreen> {
+  final _formKey = GlobalKey<FormState>();
 
-  String? treatmentStatus;
+  final _nameController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _dobController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _allergiesController = TextEditingController();
+  final _ongoingController = TextEditingController();
+  final _notesController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.patient != null) {
-      // Check if "firstName" exists or only "name"
-      if (widget.patient!.containsKey("firstName")) {
-        firstNameController.text = widget.patient!["firstName"] ?? "";
-        lastNameController.text = widget.patient!["lastName"] ?? "";
-      } else if (widget.patient!.containsKey("name")) {
-        // Split name into first + last
-        final parts = widget.patient!["name"].toString().split(" ");
-        firstNameController.text = parts.isNotEmpty ? parts.first : "";
-        lastNameController.text =
-            parts.length > 1 ? parts.sublist(1).join(" ") : "";
-      }
+  String _status = "Active"; // Default dropdown value
 
-      dobController.text = widget.patient!["dob"] ?? "";
-      contactController.text = widget.patient!["contact"] ?? "";
-      addressController.text = widget.patient!["address"] ?? "";
-      treatmentStatus = widget.patient!["status"];
+  void _savePatient() {
+    if (_formKey.currentState!.validate()) {
+      final newPatient = Patient(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: _nameController.text.trim(),
+        age: int.tryParse(_ageController.text) ?? 0,
+        phone: _phoneController.text.trim(),
+        dob: _dobController.text.trim(),
+        address: _addressController.text.trim(),
+        status: _status,
+        lastVisit: DateTime.now(),
+        allergies: _allergiesController.text.trim(),
+        ongoing: _ongoingController.text.trim(),
+        treatments: [],
+        notes: _notesController.text.trim(),
+        reportFiles: [],
+      );
+
+      // ✅ return patient to PatientListScreen
+      Navigator.pop(context, newPatient);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    bool isEditing = widget.patient != null;
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _phoneController.dispose();
+    _dobController.dispose();
+    _addressController.dispose();
+    _allergiesController.dispose();
+    _ongoingController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
 
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: Colors.blue.shade50,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? "Edit Patient" : "Add Patient"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: const Text("Add Patient"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Personal Details
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: firstNameController,
-                    decoration: const InputDecoration(
-                      labelText: "First Name",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: lastNameController,
-                    decoration: const InputDecoration(
-                      labelText: "Last Name",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // DOB & Contact
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: dobController,
-                    readOnly: true,
-                    onTap: () async {
-                      DateTime? pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime.now(),
-                      );
-                      if (pickedDate != null) {
-                        dobController.text =
-                            "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: "Date of Birth",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: contactController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: "Contact",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Address
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(
-                labelText: "Address",
-                border: OutlineInputBorder(),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: _inputDecoration("Full Name", Icons.person),
+                validator: (v) =>
+                    v == null || v.isEmpty ? "Enter patient's name" : null,
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Treatment Status
-            const Text("Treatment Status",
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              children: [
-                ChoiceChip(
-                  label: const Text("New"),
-                  selected: treatmentStatus == "New",
-                  onSelected: (_) => setState(() => treatmentStatus = "New"),
-                ),
-                ChoiceChip(
-                  label: const Text("Under Treatment"),
-                  selected: treatmentStatus == "Under Treatment",
-                  onSelected: (_) =>
-                      setState(() => treatmentStatus = "Under Treatment"),
-                ),
-                ChoiceChip(
-                  label: const Text("Follow Up"),
-                  selected: treatmentStatus == "Follow Up",
-                  onSelected: (_) =>
-                      setState(() => treatmentStatus = "Follow Up"),
-                ),
-                ChoiceChip(
-                  label: const Text("Completed"),
-                  selected: treatmentStatus == "Completed",
-                  onSelected: (_) =>
-                      setState(() => treatmentStatus = "Completed"),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            // Save Button
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  final patientData = {
-                    "firstName": firstNameController.text,
-                    "lastName": lastNameController.text,
-                    "dob": dobController.text,
-                    "contact": contactController.text,
-                    "address": addressController.text,
-                    "status": treatmentStatus,
-                  };
-
-                  Navigator.pop(context, patientData); // Return data back
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                decoration: _inputDecoration("Age", Icons.calendar_today),
+                validator: (v) =>
+                    v == null || v.isEmpty ? "Enter age" : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: _inputDecoration("Phone Number", Icons.phone),
+                validator: (v) =>
+                    v == null || v.length < 10 ? "Enter valid phone" : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _dobController,
+                decoration: _inputDecoration("Date of Birth (dd/mm/yyyy)", Icons.cake),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addressController,
+                decoration: _inputDecoration("Address", Icons.home),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _status,
+                decoration: _inputDecoration("Status", Icons.check_circle),
+                items: ["Active", "Follow-up", "Completed"]
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _status = val);
                 },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: Text(isEditing ? "Update" : "Save"),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _allergiesController,
+                decoration: _inputDecoration("Allergies", Icons.warning),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _ongoingController,
+                decoration: _inputDecoration("Ongoing Conditions", Icons.medical_services),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _notesController,
+                decoration: _inputDecoration("Notes", Icons.note),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.save),
+                label: const Text(
+                  "Save Patient",
+                  style: TextStyle(fontSize: 18),
+                ),
+                onPressed: _savePatient,
+              ),
+            ],
+          ),
         ),
       ),
     );

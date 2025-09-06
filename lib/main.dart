@@ -1,7 +1,6 @@
 
-import 'package:dental_app/screens/add_patient.dart';
-import 'package:dental_app/screens/edit_screen.dart';
 import 'package:dental_app/screens/login_screen.dart';
+import 'package:dental_app/screens/patient_screen.dart';
 import 'package:dental_app/screens/view_patient_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -32,12 +31,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       // home:  PatientListScreen(),
-            home:  LoginScreen(),
+            home:  ProfileScreen(),
 
 
       routes: {
         '/signup': (context) => const SignupScreen(),
-        '/profile' :(context) => const ProfileScreen(),
       },
     );
   }
