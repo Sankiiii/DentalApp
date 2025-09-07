@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dental_app/screens/profile_screen.dart';
+import 'package:dental_app/services/pinata_image_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 class EditPatientScreen extends StatefulWidget {
   final Patient patient;
@@ -30,7 +35,11 @@ class _EditPatientScreenState extends State<EditPatientScreen>
 
   late List<Treatment> _treatments;
   late List<String> _reportFiles;
+  List<File> _newAttachments = [];
   bool _isLoading = false;
+  bool _isUploading = false;
+
+  final user = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
@@ -89,49 +98,143 @@ class _EditPatientScreenState extends State<EditPatientScreen>
     super.dispose();
   }
 
-  void _save() async {
-    if (_formKey.currentState?.validate() != true) return;
-
-    setState(() => _isLoading = true);
-
-    // Simulate API call delay
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    final parsedAge = int.tryParse(_ageCtrl.text.trim()) ?? widget.patient.age;
-    DateTime parsedDate;
-    try {
-      parsedDate = DateTime.parse(_lastVisitCtrl.text.trim());
-    } catch (_) {
-      parsedDate = widget.patient.lastVisit;
-    }
-
-    final updated = widget.patient.copyWith(
-      name: _nameCtrl.text.trim(),
-      age: parsedAge,
-      phone: _phoneCtrl.text.trim(),
-      dob: _dobCtrl.text.trim(),
-      address: _addressCtrl.text.trim(),
-      status: _statusCtrl.text.trim(),
-      lastVisit: parsedDate,
-      allergies: _allergiesCtrl.text.trim(),
-      ongoing: _ongoingCtrl.text.trim(),
-      treatments: _treatments,
-      notes: _notesCtrl.text.trim(),
-      reportFiles: _reportFiles,
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
     );
 
-    setState(() => _isLoading = false);
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        _newAttachments.addAll(result.paths.map((p) => File(p!)));
+      });
+    }
+  }
 
+  void _removeNewAttachment(int index) {
+    setState(() {
+      _newAttachments.removeAt(index);
+    });
+  }
+
+  void _removeExistingFile(int index) {
+    setState(() {
+      _reportFiles.removeAt(index);
+    });
+  }
+
+  void _save() async {
+    if (_formKey.currentState?.validate() != true) return;
+    if (user == null) {
+      _showError("User not logged in");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _isUploading = _newAttachments.isNotEmpty;
+    });
+
+    try {
+      // Upload new files to Pinata
+      List<String> uploadedUrls = [];
+      for (int i = 0; i < _newAttachments.length; i++) {
+        final url = await PinataService().uploadFile(_newAttachments[i]);
+        if (url != null) uploadedUrls.add(url);
+      }
+
+      // Combine existing and new files
+      final allFiles = [..._reportFiles, ...uploadedUrls];
+
+      final parsedAge = int.tryParse(_ageCtrl.text.trim()) ?? widget.patient.age;
+      DateTime parsedDate;
+      try {
+        parsedDate = DateTime.parse(_lastVisitCtrl.text.trim());
+      } catch (_) {
+        parsedDate = widget.patient.lastVisit;
+      }
+
+      // Convert treatments to Firebase-compatible format
+      final treatmentMaps = _treatments.map((t) => {
+        'date': t.date.toIso8601String(),
+        'type': t.type,
+        'cost': t.cost,
+        'estimatedSessions': t.estimatedSessions,
+        'remainingSessions': t.remainingSessions,
+      }).toList();
+
+      // Update patient in Firebase
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user!.uid)
+          .collection("patients")
+          .doc(widget.patient.id)
+          .update({
+        "name": _nameCtrl.text.trim(),
+        "age": parsedAge,
+        "phone": _phoneCtrl.text.trim(),
+        "dob": _dobCtrl.text.trim(),
+        "address": _addressCtrl.text.trim(),
+        "status": _statusCtrl.text.trim(),
+        "lastVisit": Timestamp.fromDate(parsedDate),
+        "allergies": _allergiesCtrl.text.trim(),
+        "ongoing": _ongoingCtrl.text.trim(),
+        "notes": _notesCtrl.text.trim(),
+        "treatments": treatmentMaps,
+        "reportFiles": allFiles,
+        "updatedAt": FieldValue.serverTimestamp(),
+      });
+
+      // Create updated patient object for navigation
+      final updated = widget.patient.copyWith(
+        name: _nameCtrl.text.trim(),
+        age: parsedAge,
+        phone: _phoneCtrl.text.trim(),
+        dob: _dobCtrl.text.trim(),
+        address: _addressCtrl.text.trim(),
+        status: _statusCtrl.text.trim(),
+        lastVisit: parsedDate,
+        allergies: _allergiesCtrl.text.trim(),
+        ongoing: _ongoingCtrl.text.trim(),
+        treatments: _treatments,
+        notes: _notesCtrl.text.trim(),
+        reportFiles: allFiles,
+      );
+
+      _showSuccess("${_nameCtrl.text} updated successfully!");
+      Navigator.pop(context, updated);
+
+    } catch (e) {
+      _showError("Failed to update patient: ${e.toString()}");
+    } finally {
+      setState(() {
+        _isLoading = false;
+        _isUploading = false;
+      });
+    }
+  }
+
+  void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("${_nameCtrl.text} updated successfully!"),
+        content: Text(message),
         backgroundColor: const Color(0xFF23649E),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+  }
 
-    Navigator.pop(context, updated);
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   void _addTreatment() {
@@ -152,6 +255,116 @@ class _EditPatientScreenState extends State<EditPatientScreen>
     setState(() {
       _treatments.removeAt(index);
     });
+  }
+
+  String _buildImageUrl(String ref) {
+    if (ref.startsWith("http")) {
+      return ref;
+    }
+    return "https://gateway.pinata.cloud/ipfs/$ref";
+  }
+
+  Widget _buildImagePreview(String imageUrl, {VoidCallback? onDelete}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 12, bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              _buildImageUrl(imageUrl),
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.broken_image_rounded, color: Colors.grey, size: 30),
+                    SizedBox(height: 4),
+                    Text("Image\nNot Found", 
+                      style: TextStyle(color: Colors.grey, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF23649E)),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (onDelete != null)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                  onPressed: onDelete,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getFileIcon(String filePath) {
+    final extension = filePath.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return Icons.picture_as_pdf_rounded;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Icons.image_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
   }
 
   @override
@@ -199,18 +412,33 @@ class _EditPatientScreenState extends State<EditPatientScreen>
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child: const SafeArea(
+                child: SafeArea(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(height: 20),
-                      Icon(
-                        Icons.edit_rounded,
-                        size: 50,
-                        color: Colors.white,
+                      const SizedBox(height: 20),
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Center(
+                          child: Text(
+                            widget.patient.name.isNotEmpty 
+                              ? widget.patient.name[0].toUpperCase() 
+                              : "?",
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF23649E),
+                            ),
+                          ),
+                        ),
                       ),
-                      SizedBox(height: 12),
-                      Text(
+                      const SizedBox(height: 12),
+                      const Text(
                         "Edit Patient",
                         style: TextStyle(
                           fontSize: 24,
@@ -219,8 +447,8 @@ class _EditPatientScreenState extends State<EditPatientScreen>
                         ),
                       ),
                       Text(
-                        "Update patient information",
-                        style: TextStyle(
+                        "Update ${widget.patient.name}'s information",
+                        style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
                         ),
@@ -232,7 +460,7 @@ class _EditPatientScreenState extends State<EditPatientScreen>
             ),
           ),
 
-          // Form Content - Using SliverToBoxAdapter to prevent overflow
+          // Form Content
           SliverToBoxAdapter(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -243,7 +471,7 @@ class _EditPatientScreenState extends State<EditPatientScreen>
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      mainAxisSize: MainAxisSize.min, // Prevents overflow
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Basic Information
                         _buildSectionCard(
@@ -337,7 +565,6 @@ class _EditPatientScreenState extends State<EditPatientScreen>
                           title: "Treatment History",
                           icon: Icons.medical_information_rounded,
                           children: [
-                            // Constrain the treatment list to prevent overflow
                             ConstrainedBox(
                               constraints: BoxConstraints(
                                 maxHeight: MediaQuery.of(context).size.height * 0.4,
@@ -489,150 +716,216 @@ class _EditPatientScreenState extends State<EditPatientScreen>
 
                         const SizedBox(height: 20),
 
-                        // Files & Reports
+                        // Files & Reports with Image Preview
                         _buildSectionCard(
-                          title: "Files & Reports",
+                          title: "Reports & Images",
                           icon: Icons.folder_rounded,
                           children: [
-                            if (_reportFiles.isEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.folder_open_rounded, color: Colors.grey),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      "No reports uploaded yet",
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            else
-                              // Constrain file list to prevent overflow
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 200),
-                                child: ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: _reportFiles.length,
-                                  itemBuilder: (context, i) => Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[50],
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                                    ),
-                                    child: ListTile(
-                                      leading: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF23649E).withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(
-                                          Icons.insert_drive_file_rounded,
-                                          color: Color(0xFF23649E),
-                                        ),
-                                      ),
-                                      title: Text(
-                                        _reportFiles[i],
-                                        style: const TextStyle(fontWeight: FontWeight.w500),
-                                      ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.delete_rounded, color: Colors.red),
-                                        onPressed: () {
-                                          setState(() => _reportFiles.removeAt(i));
-                                        },
-                                      ),
+                            // Existing Files
+                            if (_reportFiles.isNotEmpty) ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.photo_library_rounded, color: Color(0xFF23649E), size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Current Files (${_reportFiles.length})",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF23649E),
+                                      fontSize: 16,
                                     ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                children: List.generate(_reportFiles.length, (i) => 
+                                  _buildImagePreview(_reportFiles[i], onDelete: () => _removeExistingFile(i))
                                 ),
                               ),
-                            
-                            const SizedBox(height: 16),
+                              const SizedBox(height: 20),
+                            ],
+
+                            // New Files
+                            if (_newAttachments.isNotEmpty) ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.new_releases_rounded, color: Colors.green, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "New Files (${_newAttachments.length})",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                children: List.generate(_newAttachments.length, (i) => Container(
+                                  margin: const EdgeInsets.only(right: 12, bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        height: 120,
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(_getFileIcon(_newAttachments[i].path), 
+                                              color: const Color(0xFF23649E), size: 40),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              _newAttachments[i].path.split('/').last,
+                                              style: const TextStyle(fontSize: 10),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: IconButton(
+                                            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                                            onPressed: () => _removeNewAttachment(i),
+                                            padding: const EdgeInsets.all(4),
+                                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+
+                            // Add Files Button
                             Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF23649E).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: const Color(0xFF23649E).withOpacity(0.3),
                                   style: BorderStyle.solid,
                                 ),
                               ),
                               child: TextButton.icon(
-                                onPressed: () {
-                                  setState(() => _reportFiles.add("new_report_${DateTime.now().millisecondsSinceEpoch}.png"));
-                                },
-                                icon: const Icon(Icons.upload_file_rounded, color: Color(0xFF23649E)),
+                                onPressed: _isLoading ? null : _pickFiles,
+                                icon: const Icon(Icons.cloud_upload_rounded, color: Color(0xFF23649E)),
                                 label: const Text(
-                                  "Add Report",
+                                  "Add X-rays, Reports, Images",
                                   style: TextStyle(
                                     color: Color(0xFF23649E),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                ),
                               ),
                             ),
+// Upload Progress
+                            if (_isUploading) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF23649E).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF23649E)),
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      "Uploading files...",
+                                      style: TextStyle(
+                                        color: Color(0xFF23649E),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
 
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 32),
 
                         // Save Button
                         Container(
                           width: double.infinity,
                           height: 56,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
                             gradient: const LinearGradient(
                               colors: [Color(0xFF23649E), Color(0xFF1565C0)],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF23649E).withOpacity(0.4),
-                                blurRadius: 15,
-                                offset: const Offset(0, 8),
+                                color: const Color(0xFF23649E).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _save,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            icon: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.check_rounded, color: Colors.white),
-                            label: Text(
-                              _isLoading ? "Saving Changes..." : "Save Changes",
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _isLoading ? null : _save,
+                              borderRadius: BorderRadius.circular(16),
+                              child: Center(
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        "Update Patient",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
                         ),
 
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -656,9 +949,9 @@ class _EditPatientScreenState extends State<EditPatientScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -666,31 +959,28 @@ class _EditPatientScreenState extends State<EditPatientScreen>
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Prevents overflow
           children: [
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF23649E), Color(0xFF1565C0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: const Color(0xFF23649E).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: Colors.white, size: 22),
+                  child: Icon(
+                    icon,
+                    color: const Color(0xFF23649E),
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF23649E),
-                    ),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E50),
                   ),
                 ),
               ],
@@ -707,76 +997,38 @@ class _EditPatientScreenState extends State<EditPatientScreen>
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
+    TextInputType? keyboardType,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        validator: validator,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF23649E).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: const Color(0xFF23649E),
-              size: 20,
-            ),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: Color(0xFF23649E),
-              width: 2,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 20,
-          ),
-        ),
-      ),
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: _inputDecoration(label, icon: icon),
     );
   }
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
-      filled: true,
-      fillColor: Colors.white,
+      prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF23649E)) : null,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Color(0xFF23649E), width: 2),
       ),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      labelStyle: TextStyle(color: Colors.grey.shade700),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }

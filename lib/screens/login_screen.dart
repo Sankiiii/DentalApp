@@ -127,11 +127,16 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.local_hospital_rounded,
-                                size: 50,
-                                color: Colors.white,
-                              ),
+                              child: ClipOval(
+  child: Image.asset(
+    "assets/images/DentistAppLogo1.png",
+    width: 50,
+    height: 50,
+    fit: BoxFit.cover, // fills the circle properly
+  ),
+)
+
+,
                             ),
                             const SizedBox(height: 24),
                             const Text(
