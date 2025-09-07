@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dental_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +12,125 @@ class CustomDrawer extends StatelessWidget {
     required this.isDrawerOpen,
     required this.toggleDrawer,
   });
+
+  // Helper method to build image URL from Pinata
+  String _buildImageUrl(String? imageRef) {
+    if (imageRef == null || imageRef.isEmpty) return '';
+    if (imageRef.startsWith('http')) return imageRef;
+    return 'https://gateway.pinata.cloud/ipfs/$imageRef';
+  }
+
+  // Profile Avatar Widget for drawer
+  Widget _buildDrawerProfileAvatar() {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection("users")
+          .doc(user?.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        Map<String, dynamic>? userData;
+        String name = "Dr";
+        String? profileImageUrl;
+        
+        if (snapshot.hasData && snapshot.data!.exists) {
+          userData = snapshot.data!.data() as Map<String, dynamic>?;
+          name = userData?["name"] ?? "Dr";
+          profileImageUrl = userData?['profileImageUrl'];
+        }
+
+        return Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(40),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: profileImageUrl != null && profileImageUrl.isNotEmpty
+                ? Image.network(
+                    _buildImageUrl(profileImageUrl),
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: const Color(0xFF23649E),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: const Color(0xFF23649E),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.person_rounded,
+                              size: 30,
+                              color: Colors.white,
+                            ),
+                            if (name.isNotEmpty)
+                              Text(
+                                name[0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 80,
+                    height: 80,
+                    color: const Color(0xFF23649E),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.person_rounded,
+                          size: 30,
+                          color: Colors.white,
+                        ),
+                        if (name.isNotEmpty)
+                          Text(
+                            name[0].toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,27 +187,8 @@ class CustomDrawer extends StatelessWidget {
                     
                     const SizedBox(height: 20),
                     
-                    // Profile Section
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(40),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        size: 40,
-                        color: Color(0xFF23649E),
-                      ),
-                    ),
+                    // Profile Section with Image
+                    _buildDrawerProfileAvatar(),
                     
                     const SizedBox(height: 16),
                     
@@ -378,8 +479,7 @@ class CustomDrawer extends StatelessWidget {
                 child: Text(
                   "Coming Soon",
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,fontWeight: FontWeight.bold,
                     color: Color(0xFF23649E),
                   ),
                 ),
