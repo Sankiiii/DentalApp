@@ -92,32 +92,31 @@ CDC (Comprehensive Dental Care) is a comprehensive mobile application built spec
 
 ### Authentication Screens
 *Add screenshots of login, registration, and password reset screens here*
+![IMG-20250907-WA0027](https://github.com/user-attachments/assets/72b31ac0-7217-49f1-a333-137aabbd58ec)
+![IMG-20250907-WA0026](https://github.com/user-attachments/assets/4ece5e67-c654-4811-9f55-51fb4127cde9)
+![IMG-20250907-WA0025](https://github.com/user-attachments/assets/e6741be1-bc00-4e00-b663-e0c7b6e51001)
 
-![Login Screen](screenshots/login.png)
-![Register Screen](screenshots/register.png)
-![Password Reset](screenshots/password_reset.png)
 
 ### Dashboard & Profile
 *Add screenshots of main dashboard and profile screens here*
+![IMG-20250907-WA0024](https://github.com/user-attachments/assets/700def97-4284-4899-bb5f-6e09cee29f30)
+![IMG-20250907-WA0023](https://github.com/user-attachments/assets/5fad0b32-35d5-4758-b88e-2dd40da87b27)
 
-![Dashboard](screenshots/dashboard.png)
-![Doctor Profile](screenshots/doctor_profile.png)
-![Profile Settings](screenshots/profile_settings.png)
+
 
 ### Patient Management
 *Add screenshots of patient-related screens here*
+![IMG-20250907-WA0022](https://github.com/user-attachments/assets/17ed94e1-ce23-4a7e-b9ed-bf157943540d)
 
-![Patient List](screenshots/patient_list.png)
-![Add Patient](screenshots/add_patient.png)
-![Patient Details](screenshots/patient_details.png)
-![Edit Patient](screenshots/edit_patient.png)
+![IMG-20250907-WA0021](https://github.com/user-attachments/assets/01f00384-d522-44f2-a562-fe0796e3c9dd)
+![IMG-20250907-WA0020](https://github.com/user-attachments/assets/350dba92-98e8-4526-ba44-855f303ed0ab)
+
 
 ### Treatment & Files
 *Add screenshots of treatment tracking and file management screens here*
+![IMG-20250907-WA0019](https://github.com/user-attachments/assets/9e0c43a1-926c-4752-8e03-2b3ef10b9ce6)
 
-![Treatment Tracking](screenshots/treatment_tracking.png)
-![File Upload](screenshots/file_upload.png)
-![X-ray Viewer](screenshots/xray_viewer.png)
+
 
 ## Technology Stack
 
@@ -130,7 +129,6 @@ CDC (Comprehensive Dental Care) is a comprehensive mobile application built spec
 - **Firebase Authentication** - User authentication
 - **Cloud Firestore** - NoSQL database
 - **Pinata IPFS** - Decentralized file storage
-- **Firebase Storage** - Backup file storage
 
 ### Development Tools
 - **Android Studio / VS Code** - IDE
@@ -149,7 +147,7 @@ CDC (Comprehensive Dental Care) is a comprehensive mobile application built spec
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/cdc-dental-care.git
+   git clone https://github.com//cdc-dental-care.git
    cd cdc-dental-care
    ```
 
@@ -229,57 +227,5 @@ users/
               └── notes: string
 ```
 
-### Security Rules
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      match /patients/{patientId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-  }
-}
-```
-
-## Contributing
-
-We welcome contributions to improve CDC! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow Flutter/Dart coding standards
-- Write clear, documented code
-- Test new features thoroughly
-- Update documentation as needed
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, questions, or feature requests:
-
-- Create an issue on GitHub
-- Contact: [your-email@example.com]
-- Documentation: [Link to documentation]
-
-## Acknowledgments
-
-- Flutter team for the excellent framework
-- Firebase for backend services
-- Pinata for IPFS storage solutions
-- Material Design for UI guidelines
-
----
 
 **CDC - Comprehensive Dental Care** | Making dental practice management simple and efficient.
