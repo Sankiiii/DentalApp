@@ -91,32 +91,25 @@ CDC (Comprehensive Dental Care) is a comprehensive mobile application built spec
 ## Screenshots
 
 ### Authentication Screens
-*Add screenshots of login, registration, and password reset screens here*
-![IMG-20250907-WA0027](https://github.com/user-attachments/assets/72b31ac0-7217-49f1-a333-137aabbd58ec)
-![IMG-20250907-WA0026](https://github.com/user-attachments/assets/4ece5e67-c654-4811-9f55-51fb4127cde9)
-![IMG-20250907-WA0025](https://github.com/user-attachments/assets/e6741be1-bc00-4e00-b663-e0c7b6e51001)
 
+<img src="https://github.com/user-attachments/assets/72b31ac0-7217-49f1-a333-137aabbd58ec" alt="Login Screen" width="300" height="600">
+<img src="https://github.com/user-attachments/assets/4ece5e67-c654-4811-9f55-51fb4127cde9" alt="Registration Screen" width="300" height="600">
+<img src="https://github.com/user-attachments/assets/e6741be1-bc00-4e00-b663-e0c7b6e51001" alt="Password Reset Screen" width="300" height="600">
 
 ### Dashboard & Profile
-*Add screenshots of main dashboard and profile screens here*
-![IMG-20250907-WA0024](https://github.com/user-attachments/assets/700def97-4284-4899-bb5f-6e09cee29f30)
-![IMG-20250907-WA0023](https://github.com/user-attachments/assets/5fad0b32-35d5-4758-b88e-2dd40da87b27)
 
-
+<img src="https://github.com/user-attachments/assets/700def97-4284-4899-bb5f-6e09cee29f30" alt="Dashboard Screen" width="300" height="600">
+<img src="https://github.com/user-attachments/assets/5fad0b32-35d5-4758-b88e-2dd40da87b27" alt="Profile Screen" width="300" height="600">
 
 ### Patient Management
-*Add screenshots of patient-related screens here*
-![IMG-20250907-WA0022](https://github.com/user-attachments/assets/17ed94e1-ce23-4a7e-b9ed-bf157943540d)
 
-![IMG-20250907-WA0021](https://github.com/user-attachments/assets/01f00384-d522-44f2-a562-fe0796e3c9dd)
-![IMG-20250907-WA0020](https://github.com/user-attachments/assets/350dba92-98e8-4526-ba44-855f303ed0ab)
-
+<img src="https://github.com/user-attachments/assets/17ed94e1-ce23-4a7e-b9ed-bf157943540d" alt="Patient List" width="300" height="600">
+<img src="https://github.com/user-attachments/assets/01f00384-d522-44f2-a562-fe0796e3c9dd" alt="Add Patient" width="300" height="600">
+<img src="https://github.com/user-attachments/assets/350dba92-98e8-4526-ba44-855f303ed0ab" alt="Patient Details" width="300" height="600">
 
 ### Treatment & Files
-*Add screenshots of treatment tracking and file management screens here*
-![IMG-20250907-WA0019](https://github.com/user-attachments/assets/9e0c43a1-926c-4752-8e03-2b3ef10b9ce6)
 
-
+<img src="https://github.com/user-attachments/assets/9e0c43a1-926c-4752-8e03-2b3ef10b9ce6" alt="Treatment Tracking" width="300" height="600">
 
 ## Technology Stack
 
@@ -226,6 +219,5 @@ users/
               ├── reportFiles: array
               └── notes: string
 ```
-
 
 **CDC - Comprehensive Dental Care** | Making dental practice management simple and efficient.
