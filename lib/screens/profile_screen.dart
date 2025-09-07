@@ -1,4 +1,6 @@
+// Updated ProfileScreen with profile image support
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dental_app/screens/doc_screen.dart';
 import 'package:dental_app/screens/login_screen.dart';
 import 'package:dental_app/screens/tratment_tracking_screen.dart';
 import 'package:dental_app/widgets/custom_drawer.dart';
@@ -60,6 +62,129 @@ class _ProfileScreenState extends State<ProfileScreen>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // Helper method to build image URL from Pinata
+  String _buildImageUrl(String? imageRef) {
+    if (imageRef == null || imageRef.isEmpty) return '';
+    if (imageRef.startsWith('http')) return imageRef;
+    return 'https://gateway.pinata.cloud/ipfs/$imageRef';
+  }
+
+  // Profile Avatar Widget with Pinata image support
+  Widget _buildProfileAvatar(Map<String, dynamic>? userData) {
+    final profileImageUrl = userData?['profileImageUrl'];
+    final name = userData?['name'] ?? 'Guest';
+    
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(
+          color: const Color(0xFF23649E),
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF23649E).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: profileImageUrl != null && profileImageUrl.isNotEmpty
+            ? Image.network(
+                _buildImageUrl(profileImageUrl),
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    width: 100,
+                    height: 100,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF23649E), Color(0xFF1565C0)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 100,
+                    height: 100,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF23649E), Color(0xFF1565C0)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.person_rounded,
+                          size: 40,
+                          color: Colors.white,
+                        ),
+                        if (name.isNotEmpty)
+                          Text(
+                            name[0].toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            : Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF23649E), Color(0xFF1565C0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.person_rounded,
+                      size: 40,
+                      color: Colors.white,
+                    ),
+                    if (name.isNotEmpty)
+                      Text(
+                        name[0].toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+      ),
+    );
   }
 
   @override
@@ -158,58 +283,29 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                           ],
                         ),
-                        child: Column(
-                          children: [
-                            // Profile Avatar
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF23649E), Color(0xFF1565C0)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(50),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF23649E).withOpacity(0.3),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.person_rounded,
-                                size: 50,
-                                color: Colors.white,
-                              ),
-                            ),
+                        child: StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection("users")
+                              .doc(user?.uid)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            Map<String, dynamic>? userData;
+                            String name = "Guest";
                             
-                            const SizedBox(height: 20),
-                            
-                            // User Name
-                            StreamBuilder<DocumentSnapshot>(
-                              stream: FirebaseFirestore.instance
-                                  .collection("users")
-                                  .doc(user?.uid)
-                                  .snapshots(),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData) {
-                                  return const Text(
-                                    "Welcome",
-                                    style: TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF23649E),
-                                    ),
-                                  );
-                                }
+                            if (snapshot.hasData && snapshot.data!.exists) {
+                              userData = snapshot.data!.data() as Map<String, dynamic>?;
+                              name = userData?["name"] ?? "Guest";
+                            }
 
-                                final userData = snapshot.data!.data() as Map<String, dynamic>?;
-                                final name = userData?["name"] ?? "Guest";
-
-                                return Text(
+                            return Column(
+                              children: [
+                                // Profile Avatar with Image
+                                _buildProfileAvatar(userData),
+                                
+                                const SizedBox(height: 20),
+                                
+                                // User Name
+                                Text(
                                   "Dr. $name",
                                   style: const TextStyle(
                                     fontSize: 28,
@@ -217,54 +313,56 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     color: Color(0xFF23649E),
                                     letterSpacing: -0.5,
                                   ),
-                                );
-                              },
-                            ),
-                            
-                            const SizedBox(height: 12),
-                            
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF23649E).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                "Dental Professional",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF23649E),
                                 ),
-                              ),
-                            ),
-                            
-                            const SizedBox(height: 20),
-                            
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(0xFF23649E).withOpacity(0.1),
+                                
+                                const SizedBox(height: 12),
+                                
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF23649E).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    userData?['specialization']?.isNotEmpty == true
+                                        ? userData!['specialization']
+                                        : "Dental Professional",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF23649E),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              child: const Text(
-                                "\"Excellence in dental care through precision, compassion, and innovation. Every smile tells a story.\"",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                  fontStyle: FontStyle.italic,
-                                  height: 1.5,
+                                
+                                const SizedBox(height: 20),
+                                
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[50],
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: const Color(0xFF23649E).withOpacity(0.1),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    "\"Excellence in dental care through precision, compassion, and innovation. Every smile tells a story.\"",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black87,
+                                      fontStyle: FontStyle.italic,
+                                      height: 1.5,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
+                              ],
+                            );
+                          },
                         ),
                       ),
                       
@@ -294,12 +392,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                         icon: Icons.settings_rounded,
                         color: const Color(0xFF1565C0),
                         onTap: () {
-                          
-                          // TODO: Navigate to profile settings
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Profile settings coming soon!"),
-                              backgroundColor: Color(0xFF23649E),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DoctorProfileScreen(),
                             ),
                           );
                         },
@@ -313,7 +409,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         icon: Icons.analytics_rounded,
                         color: const Color(0xFF0D47A1),
                         onTap: () {
-                          // TODO: Navigate to analytics
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text("Analytics feature coming soon!"),
